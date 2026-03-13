@@ -1,5 +1,9 @@
 # Claude Code Cache Efficiency Analyzer
 
+Based on https://habr.com/ru/companies/bitrix/articles/1008320/
+
+It helps to analyze you Claude Agent SDK usage.
+
 CLI tool that reads Claude Code JSONL session files, computes prompt cache efficiency metrics using the Bitrix24/Habr formula, and displays results as rich terminal tables.
 
 ## Formula

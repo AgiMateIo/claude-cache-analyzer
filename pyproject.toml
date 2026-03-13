@@ -3,10 +3,30 @@ name = "claude-cache-analyzer"
 version = "0.1.0"
 description = "Analyze Claude Code session cache efficiency"
 requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    { name = "Eugene Smith", email = "easmithpub@mail.ru" },
+]
+readme = "README.md"
+keywords = ["claude", "cache", "anthropic", "cli", "prompt-caching"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+]
 dependencies = [
     "typer>=0.12",
     "rich>=13",
 ]
+
+[project.urls]
+Homepage = "https://github.com/AgiMateIo/claude-cache-analyzer"
+Repository = "https://github.com/AgiMateIo/claude-cache-analyzer"
+Issues = "https://github.com/AgiMateIo/claude-cache-analyzer/issues"
 
 [project.scripts]
 claude-cache = "claude_cache_analyzer.cli:app"
