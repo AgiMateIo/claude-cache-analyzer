@@ -9,7 +9,7 @@ dependencies = [
 ]
 
 [project.scripts]
-claude-cache = "cli:app"
+claude-cache = "claude_cache_analyzer.cli:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
