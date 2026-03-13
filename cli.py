@@ -14,7 +14,11 @@ from rich.console import Console
 from claude_cache_analyzer import __version__
 from claude_cache_analyzer.metrics import aggregate, compute_session_metrics
 from claude_cache_analyzer.parser import discover_sessions, parse_session_file
-from claude_cache_analyzer.report import print_no_sessions_message, print_project_report
+from claude_cache_analyzer.report import (
+    print_grouped_report,
+    print_no_sessions_message,
+    print_project_report,
+)
 
 app = typer.Typer(help="Analyze Claude Code session cache efficiency.")
 console = Console()
@@ -40,6 +44,9 @@ def main(
     ),
     min_turns: int = typer.Option(
         1, "--min-turns", help="Minimum number of turns to include a session."
+    ),
+    group_by_project: bool = typer.Option(
+        False, "--group-by-project", "-g", help="Group results by project."
     ),
     export_json: Optional[Path] = typer.Option(
         None, "--export-json", help="Export raw metrics to a JSON file."
@@ -99,13 +106,16 @@ def main(
     # Compute metrics
     sessions_metrics = [compute_session_metrics(s) for s in sessions]
 
-    # Derive display project name
-    display_name = project_name or (
-        sessions[0].project if len(set(s.project for s in sessions)) == 1 else "all projects"
-    )
-
     # Print report
-    print_project_report(sessions_metrics, display_name)
+    if group_by_project:
+        print_grouped_report(sessions_metrics)
+    else:
+        display_name = project_name or (
+            sessions[0].project
+            if len(set(s.project for s in sessions)) == 1
+            else "all projects"
+        )
+        print_project_report(sessions_metrics, display_name)
 
     # Export JSON
     if export_json:

@@ -208,6 +208,107 @@ def print_project_report(
     )
 
 
+def print_grouped_report(
+    sessions_metrics: list[SessionMetrics],
+) -> None:
+    """Print a report grouped by project."""
+    from itertools import groupby
+
+    # Group by project
+    sorted_sm = sorted(sessions_metrics, key=lambda sm: sm.session.project)
+    groups: list[tuple[str, list[SessionMetrics]]] = [
+        (proj, list(items))
+        for proj, items in groupby(sorted_sm, key=lambda sm: sm.session.project)
+    ]
+
+    # Sort groups by total actual cost descending
+    groups.sort(key=lambda g: sum(sm.actual_cost for sm in g[1]), reverse=True)
+
+    total_sessions = len(sessions_metrics)
+
+    # Header
+    header = Text.assemble(
+        ("   Claude Code · Cache Efficiency Report\n", "bold white"),
+        (
+            f"   {len(groups)} projects  ·  {total_sessions} sessions analysed",
+            "dim",
+        ),
+    )
+    console.print(Panel(header, style="bold blue", expand=False))
+    console.print()
+
+    # Overall summary
+    agg = aggregate(sessions_metrics)
+    summary = Table(title="Overall Summary", show_header=True, header_style="bold magenta")
+    summary.add_column("Metric", style="bold")
+    summary.add_column("Value", justify="right")
+    summary.add_row("Total actual cost", _fmt_cost(agg["total_actual_cost"]))
+    summary.add_row("Cost without cache", _fmt_cost(agg["total_cost_no_cache"]))
+    summary.add_row("Total savings", _fmt_cost(agg["total_savings"]))
+    summary.add_row("Net savings (after write overhead)", _fmt_cost(agg["total_net_savings"]))
+    if agg["total_cost_no_cache"] > 0:
+        savings_pct = agg["total_savings"] / agg["total_cost_no_cache"] * 100
+    else:
+        savings_pct = 0.0
+    summary.add_row("Savings %", _fmt_pct(savings_pct))
+    summary.add_row("Avg cache hit rate", _fmt_pct(agg["avg_hit_rate"] * 100))
+    summary.add_row("Avg efficiency score", f"{agg['avg_efficiency_score']:.2f}")
+    console.print(summary)
+    console.print()
+
+    # Per-project table
+    proj_table = Table(
+        title="By Project", show_header=True, header_style="bold cyan"
+    )
+    proj_table.add_column("#", justify="right", style="dim", width=4)
+    proj_table.add_column("Project", max_width=32)
+    proj_table.add_column("Sessions", justify="right", width=9)
+    proj_table.add_column("Turns", justify="right", width=7)
+    proj_table.add_column("Cache hit%", width=28)
+    proj_table.add_column("Efficiency", justify="right", width=10)
+    proj_table.add_column("Grade", justify="center", width=6)
+    proj_table.add_column("Actual $", justify="right", width=10)
+    proj_table.add_column("Savings $", justify="right", width=10)
+    proj_table.add_column("Savings %", justify="right", width=10)
+
+    for i, (proj_name, proj_metrics) in enumerate(groups, 1):
+        proj_agg = aggregate(proj_metrics)
+        total_turns = sum(sm.session.num_turns for sm in proj_metrics)
+        avg_eff = proj_agg["avg_efficiency_score"]
+
+        if avg_eff >= 0.70:
+            grade = "A"
+        elif avg_eff >= 0.50:
+            grade = "B"
+        elif avg_eff >= 0.30:
+            grade = "C"
+        elif avg_eff >= 0.10:
+            grade = "D"
+        else:
+            grade = "F"
+
+        if proj_agg["total_cost_no_cache"] > 0:
+            sav_pct = proj_agg["total_savings"] / proj_agg["total_cost_no_cache"] * 100
+        else:
+            sav_pct = 0.0
+
+        proj_table.add_row(
+            str(i),
+            proj_name[:32],
+            str(len(proj_metrics)),
+            str(total_turns),
+            _hit_rate_bar(proj_agg["avg_hit_rate"]),
+            f"{avg_eff:.2f}",
+            _grade_text(grade),
+            _fmt_cost(proj_agg["total_actual_cost"]),
+            _fmt_cost(proj_agg["total_savings"]),
+            _fmt_pct(sav_pct),
+        )
+
+    console.print(proj_table)
+    console.print()
+
+
 def print_no_sessions_message() -> None:
     """Print a friendly message when no sessions are found."""
     console.print(
