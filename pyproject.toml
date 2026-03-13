@@ -1,0 +1,20 @@
+[project]
+name = "claude-cache-analyzer"
+version = "0.1.0"
+description = "Analyze Claude Code session cache efficiency"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12",
+    "rich>=13",
+]
+
+[project.scripts]
+claude-cache = "cli:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
