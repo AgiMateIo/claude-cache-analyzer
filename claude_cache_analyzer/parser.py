@@ -142,6 +142,30 @@ def parse_session_file(path: Path) -> Session:
     return Session(session_id=session_id, project=project, path=path, turns=turns)
 
 
+def find_session_by_id(
+    sessions: list[Session], session_id: str
+) -> tuple[Session | None, list[Session]]:
+    """Find a session by exact or prefix match on session_id.
+
+    Returns (match, candidates):
+      - (session, [session]) if exactly one match
+      - (None, [s1, s2, ...]) if ambiguous (multiple prefix matches)
+      - (None, []) if not found
+    """
+    # Exact match first
+    for s in sessions:
+        if s.session_id == session_id:
+            return s, [s]
+
+    # Prefix match
+    candidates = [s for s in sessions if s.session_id.startswith(session_id)]
+    if len(candidates) == 1:
+        return candidates[0], candidates
+    if len(candidates) > 1:
+        return None, candidates
+    return None, []
+
+
 def discover_sessions(claude_root: Path) -> list[Session]:
     """Recursively find JSONL sessions under claude_root/projects/."""
     projects_dir = claude_root / "projects"

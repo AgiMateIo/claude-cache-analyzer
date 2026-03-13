@@ -13,14 +13,18 @@ from rich.console import Console
 
 from claude_cache_analyzer import __version__
 from claude_cache_analyzer.metrics import aggregate, compute_session_metrics
-from claude_cache_analyzer.parser import discover_sessions, parse_session_file
+from claude_cache_analyzer.parser import discover_sessions, find_session_by_id, parse_session_file
 from claude_cache_analyzer.report import (
     print_grouped_report,
     print_no_sessions_message,
     print_project_report,
+    print_session_detail,
 )
 
-app = typer.Typer(help="Analyze Claude Code session cache efficiency.")
+app = typer.Typer(
+    help="Analyze Claude Code session cache efficiency.",
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
 console = Console()
 
 
@@ -44,6 +48,9 @@ def main(
     ),
     min_turns: int = typer.Option(
         1, "--min-turns", help="Minimum number of turns to include a session."
+    ),
+    session: Optional[str] = typer.Option(
+        None, "--session", "-s", help="Show detailed view for a specific session (full or partial ID)."
     ),
     group_by_project: bool = typer.Option(
         False, "--group-by-project", "-g", help="Group results by project."
@@ -86,6 +93,58 @@ def main(
 
     if not sessions:
         print_no_sessions_message()
+        raise typer.Exit()
+
+    # Session detail mode
+    if session:
+        match, candidates = find_session_by_id(sessions, session)
+        if match is None and not candidates:
+            console.print(f"[red]No session found matching '{session}'[/red]")
+            raise typer.Exit(1)
+        if match is None:
+            console.print(f"[yellow]Ambiguous session ID '{session}'. Candidates:[/yellow]")
+            for c in candidates:
+                date_str = c.started_at.strftime("%Y-%m-%d %H:%M") if c.started_at else "—"
+                console.print(f"  {c.session_id}  ({date_str}, {c.num_turns} turns)")
+            raise typer.Exit(1)
+
+        sm = compute_session_metrics(match)
+        print_session_detail(sm)
+
+        if export_json:
+            export_data = {
+                "session_id": match.session_id,
+                "project": match.project,
+                "model": match.model,
+                "started_at": match.started_at.isoformat() if match.started_at else None,
+                "num_turns": match.num_turns,
+                "hit_rate": sm.hit_rate,
+                "efficiency_score": sm.cache_efficiency_score,
+                "grade": sm.grade(),
+                "actual_cost": sm.actual_cost,
+                "cost_no_cache": sm.cost_no_cache,
+                "savings": sm.savings,
+                "net_savings": sm.net_savings,
+                "savings_pct": sm.savings_pct,
+                "turns": [
+                    {
+                        "timestamp": tm.turn.timestamp.isoformat() if tm.turn.timestamp else None,
+                        "model": tm.turn.model,
+                        "input_tokens": tm.turn.input_tokens,
+                        "output_tokens": tm.turn.output_tokens,
+                        "cache_creation_tokens": tm.turn.cache_creation_tokens,
+                        "cache_read_tokens": tm.turn.cache_read_tokens,
+                        "hit_rate": tm.turn.hit_rate,
+                        "actual_cost": tm.actual_cost,
+                        "cost_no_cache": tm.cost_no_cache,
+                        "savings": tm.savings,
+                        "savings_pct": tm.savings_pct,
+                    }
+                    for tm in sm.turns
+                ],
+            }
+            export_json.write_text(json.dumps(export_data, indent=2))
+            console.print(f"\n[green]Metrics exported to {export_json}[/green]")
         raise typer.Exit()
 
     # Filter by project name
