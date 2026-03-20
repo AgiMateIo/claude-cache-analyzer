@@ -126,19 +126,31 @@ def compute_session_metrics(session: Session) -> SessionMetrics:
     return SessionMetrics(session=session, turns=turn_metrics)
 
 
-def aggregate(sessions_metrics: list[SessionMetrics]) -> dict:
+@dataclass
+class AggregateMetrics:
+    total_actual_cost: float
+    total_cost_no_cache: float
+    total_savings: float
+    total_net_savings: float
+    avg_hit_rate: float
+    avg_efficiency_score: float
+    best_session: SessionMetrics | None
+    worst_session: SessionMetrics | None
+
+
+def aggregate(sessions_metrics: list[SessionMetrics]) -> AggregateMetrics:
     """Compute aggregate statistics across all sessions."""
     if not sessions_metrics:
-        return {
-            "total_actual_cost": 0.0,
-            "total_cost_no_cache": 0.0,
-            "total_savings": 0.0,
-            "total_net_savings": 0.0,
-            "avg_hit_rate": 0.0,
-            "avg_efficiency_score": 0.0,
-            "best_session": None,
-            "worst_session": None,
-        }
+        return AggregateMetrics(
+            total_actual_cost=0.0,
+            total_cost_no_cache=0.0,
+            total_savings=0.0,
+            total_net_savings=0.0,
+            avg_hit_rate=0.0,
+            avg_efficiency_score=0.0,
+            best_session=None,
+            worst_session=None,
+        )
 
     total_actual = sum(sm.actual_cost for sm in sessions_metrics)
     total_no_cache = sum(sm.cost_no_cache for sm in sessions_metrics)
@@ -151,13 +163,13 @@ def aggregate(sessions_metrics: list[SessionMetrics]) -> dict:
     best = max(sessions_metrics, key=lambda s: s.cache_efficiency_score)
     worst = min(sessions_metrics, key=lambda s: s.cache_efficiency_score)
 
-    return {
-        "total_actual_cost": total_actual,
-        "total_cost_no_cache": total_no_cache,
-        "total_savings": total_savings,
-        "total_net_savings": total_net,
-        "avg_hit_rate": avg_hit,
-        "avg_efficiency_score": avg_eff,
-        "best_session": best,
-        "worst_session": worst,
-    }
+    return AggregateMetrics(
+        total_actual_cost=total_actual,
+        total_cost_no_cache=total_no_cache,
+        total_savings=total_savings,
+        total_net_savings=total_net,
+        avg_hit_rate=avg_hit,
+        avg_efficiency_score=avg_eff,
+        best_session=best,
+        worst_session=worst,
+    )

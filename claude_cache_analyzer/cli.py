@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
-from datetime import datetime
+from dataclasses import asdict, fields
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -81,8 +81,9 @@ def main(
                 s = parse_session_file(f)
                 if s.turns:
                     sessions.append(s)
+            _MIN_DT = datetime.min.replace(tzinfo=timezone.utc)
             sessions.sort(
-                key=lambda s: s.started_at or datetime.min, reverse=True
+                key=lambda s: s.started_at or _MIN_DT, reverse=True
             )
         else:
             # Maybe it's a projects/ parent
@@ -181,9 +182,9 @@ def main(
         agg = aggregate(sessions_metrics)
         export_data = {
             "aggregate": {
-                k: v
-                for k, v in agg.items()
-                if k not in ("best_session", "worst_session")
+                f.name: getattr(agg, f.name)
+                for f in fields(agg)
+                if f.name not in ("best_session", "worst_session")
             },
             "sessions": [],
         }

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from rich.console import Console
@@ -178,5 +178,6 @@ def discover_sessions(claude_root: Path) -> list[Session]:
         if session.turns:
             sessions.append(session)
 
-    sessions.sort(key=lambda s: s.started_at or datetime.min, reverse=True)
+    _MIN_DT = datetime.min.replace(tzinfo=timezone.utc)
+    sessions.sort(key=lambda s: s.started_at or _MIN_DT, reverse=True)
     return sessions

@@ -9,7 +9,7 @@ from rich.text import Text
 
 from datetime import timedelta
 
-from .metrics import SessionMetrics, aggregate
+from .metrics import AggregateMetrics, SessionMetrics, aggregate
 
 console = Console()
 
@@ -75,19 +75,19 @@ def print_project_report(
     summary.add_column("Metric", style="bold")
     summary.add_column("Value", justify="right")
 
-    summary.add_row("Total actual cost", _fmt_cost(agg["total_actual_cost"]))
-    summary.add_row("Cost without cache", _fmt_cost(agg["total_cost_no_cache"]))
-    summary.add_row("Total savings", _fmt_cost(agg["total_savings"]))
+    summary.add_row("Total actual cost", _fmt_cost(agg.total_actual_cost))
+    summary.add_row("Cost without cache", _fmt_cost(agg.total_cost_no_cache))
+    summary.add_row("Total savings", _fmt_cost(agg.total_savings))
     summary.add_row(
-        "Net savings (after write overhead)", _fmt_cost(agg["total_net_savings"])
+        "Net savings (after write overhead)", _fmt_cost(agg.total_net_savings)
     )
-    if agg["total_cost_no_cache"] > 0:
-        savings_pct = agg["total_savings"] / agg["total_cost_no_cache"] * 100
+    if agg.total_cost_no_cache > 0:
+        savings_pct = agg.total_savings / agg.total_cost_no_cache * 100
     else:
         savings_pct = 0.0
     summary.add_row("Savings %", _fmt_pct(savings_pct))
-    summary.add_row("Avg cache hit rate", _fmt_pct(agg["avg_hit_rate"] * 100))
-    summary.add_row("Avg efficiency score", f"{agg['avg_efficiency_score']:.2f}")
+    summary.add_row("Avg cache hit rate", _fmt_pct(agg.avg_hit_rate * 100))
+    summary.add_row("Avg efficiency score", f"{agg.avg_efficiency_score:.2f}")
 
     console.print(summary)
     console.print()
@@ -139,8 +139,9 @@ def print_project_report(
             sessions_metrics, key=lambda s: s.cache_efficiency_score, reverse=True
         )
 
-        top3 = sorted_by_eff[:3]
-        bottom3 = sorted_by_eff[-3:]
+        half = len(sorted_by_eff) // 2
+        top3 = sorted_by_eff[:min(3, half)]
+        bottom3 = sorted_by_eff[-min(3, len(sorted_by_eff) - half):]
 
         # Estimate space for project column in small tables:
         # Session(15) + Efficiency(10) + Grade(6) + Savings(10) + borders ≈ 60
@@ -187,7 +188,7 @@ def print_project_report(
 
     # 5. Tips panel
     tips: list[str] = []
-    avg_hit = agg["avg_hit_rate"]
+    avg_hit = agg.avg_hit_rate
     if avg_hit < 0.40:
         tips.append(
             "• Low hit rate ({:.1f}%). Consider increasing the system prompt size "
@@ -213,7 +214,7 @@ def print_project_report(
             "this is normal for first requests in a session."
         )
 
-    if agg["avg_efficiency_score"] < 0.30:
+    if agg.avg_efficiency_score < 0.30:
         tips.append(
             "• Low average efficiency score. Sessions with short conversations "
             "or highly variable prompts tend to benefit less from caching."
@@ -420,17 +421,17 @@ def print_grouped_report(
     summary = Table(title="Overall Summary", show_header=True, header_style="bold magenta")
     summary.add_column("Metric", style="bold")
     summary.add_column("Value", justify="right")
-    summary.add_row("Total actual cost", _fmt_cost(agg["total_actual_cost"]))
-    summary.add_row("Cost without cache", _fmt_cost(agg["total_cost_no_cache"]))
-    summary.add_row("Total savings", _fmt_cost(agg["total_savings"]))
-    summary.add_row("Net savings (after write overhead)", _fmt_cost(agg["total_net_savings"]))
-    if agg["total_cost_no_cache"] > 0:
-        savings_pct = agg["total_savings"] / agg["total_cost_no_cache"] * 100
+    summary.add_row("Total actual cost", _fmt_cost(agg.total_actual_cost))
+    summary.add_row("Cost without cache", _fmt_cost(agg.total_cost_no_cache))
+    summary.add_row("Total savings", _fmt_cost(agg.total_savings))
+    summary.add_row("Net savings (after write overhead)", _fmt_cost(agg.total_net_savings))
+    if agg.total_cost_no_cache > 0:
+        savings_pct = agg.total_savings / agg.total_cost_no_cache * 100
     else:
         savings_pct = 0.0
     summary.add_row("Savings %", _fmt_pct(savings_pct))
-    summary.add_row("Avg cache hit rate", _fmt_pct(agg["avg_hit_rate"] * 100))
-    summary.add_row("Avg efficiency score", f"{agg['avg_efficiency_score']:.2f}")
+    summary.add_row("Avg cache hit rate", _fmt_pct(agg.avg_hit_rate * 100))
+    summary.add_row("Avg efficiency score", f"{agg.avg_efficiency_score:.2f}")
     console.print(summary)
     console.print()
 
@@ -456,7 +457,7 @@ def print_grouped_report(
     for i, (proj_name, proj_metrics) in enumerate(groups, 1):
         proj_agg = aggregate(proj_metrics)
         total_turns = sum(sm.session.num_turns for sm in proj_metrics)
-        avg_eff = proj_agg["avg_efficiency_score"]
+        avg_eff = proj_agg.avg_efficiency_score
 
         if avg_eff >= 0.70:
             grade = "A"
@@ -469,8 +470,8 @@ def print_grouped_report(
         else:
             grade = "F"
 
-        if proj_agg["total_cost_no_cache"] > 0:
-            sav_pct = proj_agg["total_savings"] / proj_agg["total_cost_no_cache"] * 100
+        if proj_agg.total_cost_no_cache > 0:
+            sav_pct = proj_agg.total_savings / proj_agg.total_cost_no_cache * 100
         else:
             sav_pct = 0.0
 
@@ -479,11 +480,11 @@ def print_grouped_report(
             _truncate_left(proj_name, max_proj_width),
             str(len(proj_metrics)),
             str(total_turns),
-            _hit_rate_bar(proj_agg["avg_hit_rate"]),
+            _hit_rate_bar(proj_agg.avg_hit_rate),
             f"{avg_eff:.2f}",
             _grade_text(grade),
-            _fmt_cost(proj_agg["total_actual_cost"]),
-            _fmt_cost(proj_agg["total_savings"]),
+            _fmt_cost(proj_agg.total_actual_cost),
+            _fmt_cost(proj_agg.total_savings),
             _fmt_pct(sav_pct),
         )
 
