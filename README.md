@@ -2,8 +2,6 @@
 
 Based on https://habr.com/ru/companies/bitrix/articles/1008320/
 
-It helps to analyze you Claude Agent SDK usage.
-
 CLI tool that reads Claude Code JSONL session files, computes prompt cache efficiency metrics using the Bitrix24/Habr formula, and displays results as rich terminal tables.
 
 ## Formula
@@ -36,6 +34,32 @@ git clone https://github.com/AgiMateIo/claude-cache-analyzer.git
 cd claude-cache-analyzer
 uv sync
 uv run python cli.py
+```
+
+## Sample Output
+
+```
+╭──────────────────────────────────────────────────╮
+│    Claude Code · Cache Efficiency Report         │
+│    Project: all projects  ·  3 sessions analysed │
+╰──────────────────────────────────────────────────╯
+
+                    Summary
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
+┃ Metric                             ┃   Value ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
+│ Total actual cost                  │ $2.0190 │
+│ Cost without cache                 │ $6.9472 │
+│ Total savings                      │ $4.9283 │
+│ Net savings (after write overhead) │ $4.7206 │
+│ Savings %                          │   70.9% │
+│ Avg cache hit rate                 │   85.5% │
+│ Avg efficiency score               │    0.85 │
+└────────────────────────────────────┴─────────┘
+
+╭─────────────────────────── Tips ────────────────────────────╮
+│ • Excellent hit rate (85.5%)! Cache is working efficiently. │
+╰─────────────────────────────────────────────────────────────╯
 ```
 
 ## Usage
